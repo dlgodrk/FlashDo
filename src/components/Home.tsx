@@ -1,5 +1,6 @@
 import { Camera, CheckCircle2, Circle, Lock } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { DevMenu } from './DevMenu';
 
 type Props = {
   onCertify: (routineId: string) => void;
@@ -7,6 +8,13 @@ type Props = {
 
 export function Home({ onCertify }: Props) {
   const { goals, routines, calculateStreak } = useApp();
+
+  const handleResetOnboarding = () => {
+    localStorage.removeItem('onboarding_complete');
+    localStorage.removeItem('flashdo_goals');
+    localStorage.removeItem('flashdo_routines');
+    window.location.reload();
+  };
 
   if (goals.length === 0) return null;
 
@@ -62,6 +70,7 @@ export function Home({ onCertify }: Props) {
 
   return (
     <div className="min-h-screen bg-neutral-50 pb-24">
+      <DevMenu onResetOnboarding={handleResetOnboarding} />
       <div className="max-w-md mx-auto px-6 py-8">
         {/* Header */}
         <div className="mb-12">
