@@ -11,9 +11,10 @@ export function Onboarding() {
   const [duration, setDuration] = useState('30');
   const [isPublic, setIsPublic] = useState(false);
   const [currentGoal, setCurrentGoal] = useState<Goal | null>(null);
-  const [routines, setRoutinesList] = useState<Routine[]>([]);
+  const [routinesList, setRoutinesList] = useState<Routine[]>([]);
   const [routineName, setRoutineName] = useState('');
   const [timeSlot, setTimeSlot] = useState<'morning' | 'afternoon' | 'evening'>('morning');
+  const [authTime, setAuthTime] = useState('09:00');
   const [selectedDays, setSelectedDays] = useState<string[]>(['월', '화', '수', '목', '금', '토', '일']);
   const [nickname, setNickname] = useState(() => {
     const random = Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -55,26 +56,28 @@ export function Onboarding() {
   };
 
   const handleAddRoutine = () => {
-    if (!routineName.trim() || routines.length >= 3 || !currentGoal) return;
+    if (!routineName.trim() || routinesList.length >= 3 || !currentGoal) return;
 
     const routine: Routine = {
       id: Date.now().toString(),
       goalId: currentGoal.id,
       name: routineName,
       timeSlot,
+      authTime,
       frequency: selectedDays,
       certified: false,
     };
 
-    setRoutinesList([...routines, routine]);
+    setRoutinesList([...routinesList, routine]);
     setRoutineName('');
+    setAuthTime('09:00');
   };
 
   const handleRoutinesComplete = () => {
-    if (currentGoal && routines.length > 0) {
+    if (currentGoal && routinesList.length > 0) {
       // Save to temporary storage
       localStorage.setItem('temp_goal', JSON.stringify(currentGoal));
-      localStorage.setItem('temp_routines', JSON.stringify(routines));
+      localStorage.setItem('temp_routines', JSON.stringify(routinesList));
       setStep('login');
     }
   };
@@ -139,14 +142,31 @@ export function Onboarding() {
       if (goalError) throw goalError;
 
       // Save routines to database
-      const routinesData = tempRoutines.map((r: Routine) => ({
-        goal_id: tempGoal.id,
-        user_id: user.id,
-        name: r.name,
-        auth_time_start: r.timeSlot === 'morning' ? '05:00' : r.timeSlot === 'afternoon' ? '12:00' : '18:00',
-        auth_time_end: r.timeSlot === 'morning' ? '12:00' : r.timeSlot === 'afternoon' ? '18:00' : '23:59',
-        frequency: r.frequency,
-      }));
+      const routinesData = tempRoutines.map((r: Routine) => {
+        let authTimeStart, authTimeEnd;
+
+        if (r.authTime) {
+          // Calculate ±1 hour range
+          const [h, m] = r.authTime.split(':').map(Number);
+          const startH = (h - 1 + 24) % 24;
+          const endH = (h + 1) % 24;
+          authTimeStart = `${startH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+          authTimeEnd = `${endH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+        } else {
+          // Legacy timeSlot support
+          authTimeStart = r.timeSlot === 'morning' ? '05:00' : r.timeSlot === 'afternoon' ? '12:00' : '18:00';
+          authTimeEnd = r.timeSlot === 'morning' ? '12:00' : r.timeSlot === 'afternoon' ? '18:00' : '23:59';
+        }
+
+        return {
+          goal_id: tempGoal.id,
+          user_id: user.id,
+          name: r.name,
+          auth_time_start: authTimeStart,
+          auth_time_end: authTimeEnd,
+          frequency: r.frequency,
+        };
+      });
 
       const { error: routinesError } = await supabase
         .from('routines')
@@ -282,7 +302,7 @@ export function Onboarding() {
           </p>
         </div>
 
-        {routines.length < 3 && (
+        {routinesList.length < 3 && (
           <div className="space-y-6 mb-8">
             <div>
               <label className="block text-base font-semibold text-neutral-900 mb-3">
@@ -299,27 +319,32 @@ export function Onboarding() {
 
             <div>
               <label className="block text-base font-semibold text-neutral-900 mb-3">
-                언제 할까요?
+                인증 시간 설정
               </label>
-              <div className="flex gap-2">
-                {[
-                  { value: 'morning', label: '아침' },
-                  { value: 'afternoon', label: '오후' },
-                  { value: 'evening', label: '저녁' },
-                ].map((slot) => (
-                  <button
-                    key={slot.value}
-                    onClick={() => setTimeSlot(slot.value as any)}
-                    className={`flex-1 py-3 rounded-xl font-medium transition-all ${
-                      timeSlot === slot.value
-                        ? 'bg-neutral-900 text-white'
-                        : 'bg-white text-neutral-600 border-2 border-neutral-200'
-                    }`}
-                  >
-                    {slot.label}
-                  </button>
-                ))}
-              </div>
+              <input
+                type="time"
+                value={authTime}
+                onChange={(e) => {
+                  setAuthTime(e.target.value);
+                  // Auto-set timeSlot based on time
+                  const hour = parseInt(e.target.value.split(':')[0]);
+                  if (hour >= 5 && hour < 12) setTimeSlot('morning');
+                  else if (hour >= 12 && hour < 18) setTimeSlot('afternoon');
+                  else setTimeSlot('evening');
+                }}
+                className="w-full px-4 py-4 bg-white border-2 border-neutral-200 rounded-2xl focus:border-neutral-900 focus:outline-none transition-colors text-lg text-center font-medium"
+              />
+              <p className="text-neutral-500 text-sm mt-2">
+                💡 설정한 시간 ±1시간 동안 인증할 수 있어요
+              </p>
+              <p className="text-neutral-400 text-xs mt-1">
+                예: {authTime} 설정 시 {(() => {
+                  const [h, m] = authTime.split(':').map(Number);
+                  const startH = (h - 1 + 24) % 24;
+                  const endH = (h + 1) % 24;
+                  return `${startH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ~ ${endH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+                })()} 사이 인증 가능
+              </p>
             </div>
 
             <div>
@@ -354,12 +379,12 @@ export function Onboarding() {
           </div>
         )}
 
-        {routines.length > 0 && (
+        {routinesList.length > 0 && (
           <div className="space-y-3 mb-8">
             <p className="text-neutral-600 font-medium">
-              추가된 루틴 ({routines.length}/3)
+              추가된 루틴 ({routinesList.length}/3)
             </p>
-            {routines.map((routine) => (
+            {routinesList.map((routine) => (
               <div
                 key={routine.id}
                 className="flex items-center justify-between px-4 py-4 bg-white rounded-2xl border-2 border-neutral-200"
@@ -367,11 +392,11 @@ export function Onboarding() {
                 <div>
                   <p className="text-neutral-900 font-medium">{routine.name}</p>
                   <p className="text-neutral-500 text-sm">
-                    {routine.timeSlot === 'morning' ? '아침' : routine.timeSlot === 'afternoon' ? '오후' : '저녁'} · {routine.frequency.join(', ')}
+                    {routine.authTime ? `${routine.authTime} (±1시간)` : routine.timeSlot === 'morning' ? '아침' : routine.timeSlot === 'afternoon' ? '오후' : '저녁'} · {routine.frequency.join(', ')}
                   </p>
                 </div>
                 <button
-                  onClick={() => setRoutinesList(routines.filter(r => r.id !== routine.id))}
+                  onClick={() => setRoutinesList(routinesList.filter(r => r.id !== routine.id))}
                   className="p-2 text-neutral-400 hover:text-neutral-900 transition-colors"
                 >
                   <X className="w-5 h-5" />
@@ -381,7 +406,7 @@ export function Onboarding() {
           </div>
         )}
 
-        {routines.length > 0 && (
+        {routinesList.length > 0 && (
           <button
             onClick={handleRoutinesComplete}
             className="w-full py-5 bg-neutral-900 text-white font-semibold text-lg rounded-2xl"

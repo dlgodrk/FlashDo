@@ -1,4 +1,4 @@
-import { Camera, CheckCircle2, Circle, Lock } from 'lucide-react';
+import { Camera, CheckCircle2, Circle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { DevMenu } from './DevMenu';
 
@@ -20,33 +20,49 @@ export function Home({ onCertify }: Props) {
 
   const currentGoal = goals[0];
 
-  // Get current time slot
+  // Get current time
   const now = new Date();
   const hour = now.getHours();
-  let currentTimeSlot: 'morning' | 'afternoon' | 'evening' = 'morning';
-  if (hour >= 12 && hour < 18) currentTimeSlot = 'afternoon';
-  else if (hour >= 18 || hour < 5) currentTimeSlot = 'evening';
+  const minute = now.getMinutes();
+  const currentTimeMinutes = hour * 60 + minute;
 
   // Get today's day
   const dayMap = ['일', '월', '화', '수', '목', '금', '토'];
   const today = dayMap[now.getDay()];
 
-  // Filter routines for current time slot and today
-  const todayRoutines = routines.filter(r =>
-    r.timeSlot === currentTimeSlot && r.frequency.includes(today)
-  );
+  // Check if routine is within auth time window
+  const isRoutineActive = (routine: typeof routines[0]) => {
+    if (!routine.authTime) {
+      // Legacy timeSlot support
+      if (routine.timeSlot === 'morning' && hour >= 5 && hour < 12) return true;
+      if (routine.timeSlot === 'afternoon' && hour >= 12 && hour < 18) return true;
+      if (routine.timeSlot === 'evening' && (hour >= 18 || hour < 5)) return true;
+      return false;
+    }
 
-  // Check if time slot is active
-  const isTimeSlotActive = () => {
-    if (currentTimeSlot === 'morning' && hour >= 5 && hour < 12) return true;
-    if (currentTimeSlot === 'afternoon' && hour >= 12 && hour < 18) return true;
-    if (currentTimeSlot === 'evening' && (hour >= 18 || hour < 5)) return true;
-    return false;
+    // Check ±1 hour window for authTime
+    const [authHour, authMinute] = routine.authTime.split(':').map(Number);
+    const authTimeMinutes = authHour * 60 + authMinute;
+    const startMinutes = authTimeMinutes - 60;
+    const endMinutes = authTimeMinutes + 60;
+
+    // Handle day wrap-around
+    if (startMinutes < 0) {
+      return currentTimeMinutes >= (startMinutes + 1440) || currentTimeMinutes <= endMinutes;
+    } else if (endMinutes >= 1440) {
+      return currentTimeMinutes >= startMinutes || currentTimeMinutes <= (endMinutes - 1440);
+    } else {
+      return currentTimeMinutes >= startMinutes && currentTimeMinutes <= endMinutes;
+    }
   };
+
+  // Filter routines for today and active time
+  const todayRoutines = routines.filter(r =>
+    r.frequency.includes(today) && isRoutineActive(r)
+  );
 
   const hasUncertified = todayRoutines.some(r => !r.certified);
   const allCertified = todayRoutines.length > 0 && todayRoutines.every(r => r.certified);
-  const timeSlotActive = isTimeSlotActive();
 
   // Calculate days passed
   const startDate = new Date(currentGoal.startDate);
@@ -56,17 +72,6 @@ export function Home({ onCertify }: Props) {
 
   const streak = calculateStreak(currentGoal.id);
 
-  const getTimeSlotLabel = () => {
-    if (currentTimeSlot === 'morning') return '오늘 아침';
-    if (currentTimeSlot === 'afternoon') return '오늘 오후';
-    return '오늘 저녁';
-  };
-
-  const getNextTimeSlot = () => {
-    if (currentTimeSlot === 'morning') return '오후 12시';
-    if (currentTimeSlot === 'afternoon') return '저녁 6시';
-    return '내일 아침 5시';
-  };
 
   return (
     <div className="min-h-screen bg-neutral-50 pb-24">
@@ -85,7 +90,7 @@ export function Home({ onCertify }: Props) {
         {/* Today's Routines */}
         <div className="mb-12">
           <h2 className="text-xl font-bold text-neutral-900 mb-4">
-            {getTimeSlotLabel()}
+            인증 가능한 루틴
           </h2>
 
           {todayRoutines.length === 0 ? (
@@ -110,9 +115,16 @@ export function Home({ onCertify }: Props) {
                   ) : (
                     <Circle className="w-6 h-6 flex-shrink-0 text-neutral-400" />
                   )}
-                  <span className={`text-base font-medium ${routine.certified ? 'text-white' : 'text-neutral-900'}`}>
-                    {routine.name}
-                  </span>
+                  <div className="flex-1">
+                    <span className={`text-base font-medium block ${routine.certified ? 'text-white' : 'text-neutral-900'}`}>
+                      {routine.name}
+                    </span>
+                    {routine.authTime && (
+                      <span className={`text-xs ${routine.certified ? 'text-neutral-300' : 'text-neutral-500'}`}>
+                        {routine.authTime} ±1시간
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -120,7 +132,7 @@ export function Home({ onCertify }: Props) {
         </div>
 
         {/* Certify Button - Toss style: High contrast, centered, large */}
-        {hasUncertified && timeSlotActive && (
+        {hasUncertified && (
           <div className="fixed bottom-24 left-0 right-0 px-6">
             <div className="max-w-md mx-auto">
               <button
@@ -131,17 +143,6 @@ export function Home({ onCertify }: Props) {
                 <span>지금 인증하기</span>
               </button>
             </div>
-          </div>
-        )}
-
-        {/* Time slot locked */}
-        {hasUncertified && !timeSlotActive && (
-          <div className="px-6 py-8 bg-neutral-200 text-neutral-700 rounded-3xl text-center">
-            <Lock className="w-12 h-12 mx-auto mb-3 text-neutral-500" />
-            <p className="text-lg font-semibold mb-1">인증 시간이 아니에요</p>
-            <p className="text-neutral-600">
-              {getNextTimeSlot()}부터 인증할 수 있어요
-            </p>
           </div>
         )}
 

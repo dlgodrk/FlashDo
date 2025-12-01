@@ -68,6 +68,21 @@ export function DevMenu({ onResetOnboarding }: Props) {
     }
   };
 
+  const handleClearCache = () => {
+    if (!confirm('모든 캐시 데이터를 삭제하시겠습니까? (localStorage 전체 삭제)')) return;
+
+    try {
+      // Clear all localStorage
+      localStorage.clear();
+
+      alert('캐시가 삭제되었습니다.');
+      window.location.reload();
+    } catch (error) {
+      console.error('Error clearing cache:', error);
+      alert('캐시 삭제에 실패했습니다.');
+    }
+  };
+
   const handleLogout = async () => {
     if (!confirm('로그아웃 하시겠습니까?')) return;
 
@@ -206,6 +221,12 @@ export function DevMenu({ onResetOnboarding }: Props) {
                     className="w-full px-4 py-3 bg-orange-50 text-orange-700 rounded-xl font-medium hover:bg-orange-100 transition-colors text-left"
                   >
                     스토리 삭제
+                  </button>
+                  <button
+                    onClick={handleClearCache}
+                    className="w-full px-4 py-3 bg-purple-50 text-purple-700 rounded-xl font-medium hover:bg-purple-100 transition-colors text-left"
+                  >
+                    캐시 전체 삭제
                   </button>
                   <button
                     onClick={handleLogout}

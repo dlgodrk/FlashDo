@@ -11,6 +11,7 @@ export type Routine = {
   goalId: string;
   name: string;
   timeSlot: 'morning' | 'afternoon' | 'evening';
+  authTime?: string; // HH:mm format (e.g., "14:30")
   frequency: string[];
   certified: boolean;
 };
