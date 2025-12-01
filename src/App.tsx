@@ -24,7 +24,10 @@ export default function App() {
   // Check if current URL is auth callback
   useEffect(() => {
     const path = window.location.pathname;
-    if (path === '/auth/callback' || window.location.hash.includes('access_token')) {
+    const hash = window.location.hash;
+
+    // Only trigger auth callback if we have the access token
+    if (hash.includes('access_token') || (path === '/auth/callback' && hash.includes('access_token'))) {
       setCurrentScreen('auth-callback');
       setIsCheckingAuth(false);
     }
@@ -176,11 +179,10 @@ export default function App() {
       return (
         <AuthCallback
           onComplete={() => {
-            // Clear hash from URL
-            window.history.replaceState(null, '', window.location.pathname);
-            // Return to onboarding to continue flow
-            setCurrentScreen('onboarding');
-            window.location.reload();
+            // Clear URL completely and go to root
+            window.history.replaceState(null, '', '/');
+            // Reload to restart the app with clean state
+            window.location.href = '/';
           }}
         />
       );
