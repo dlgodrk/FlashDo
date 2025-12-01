@@ -10,31 +10,61 @@ export function DevMenu({ onResetOnboarding }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [overrideTime, setOverrideTime] = useState<Date | null>(null);
 
-  // Only show in development
-  const isDev = import.meta.env.DEV;
-  if (!isDev) return null;
-
-  const handleClearMyData = async () => {
-    if (!confirm('내 데이터를 모두 삭제하시겠습니까? (계정은 유지됩니다)')) return;
+  const handleDeleteGoals = async () => {
+    if (!confirm('목표와 루틴을 모두 삭제하시겠습니까?')) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not found');
 
-      // Delete verifications
-      await supabase.from('verifications').delete().eq('user_id', user.id);
-
-      // Delete routines
+      // Delete routines first (foreign key constraint)
       await supabase.from('routines').delete().eq('user_id', user.id);
 
       // Delete goals
       await supabase.from('goals').delete().eq('user_id', user.id);
 
-      alert('데이터가 삭제되었습니다.');
+      // Also clear localStorage
+      localStorage.removeItem('flashdo_goals');
+      localStorage.removeItem('flashdo_routines');
+
+      alert('목표와 루틴이 삭제되었습니다.');
       window.location.reload();
     } catch (error) {
-      console.error('Error clearing data:', error);
-      alert('데이터 삭제에 실패했습니다.');
+      console.error('Error deleting goals:', error);
+      alert('목표 삭제에 실패했습니다.');
+    }
+  };
+
+  const handleDeleteFeed = async () => {
+    if (!confirm('피드 데이터를 모두 삭제하시겠습니까?')) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not found');
+
+      // Delete verifications (feed data)
+      await supabase.from('verifications').delete().eq('user_id', user.id);
+
+      alert('피드 데이터가 삭제되었습니다.');
+      window.location.reload();
+    } catch (error) {
+      console.error('Error deleting feed:', error);
+      alert('피드 삭제에 실패했습니다.');
+    }
+  };
+
+  const handleDeleteStories = () => {
+    if (!confirm('스토리를 모두 삭제하시겠습니까?')) return;
+
+    try {
+      // Delete stories from localStorage
+      localStorage.removeItem('flashdo_stories');
+
+      alert('스토리가 삭제되었습니다.');
+      window.location.reload();
+    } catch (error) {
+      console.error('Error deleting stories:', error);
+      alert('스토리 삭제에 실패했습니다.');
     }
   };
 
@@ -160,10 +190,22 @@ export function DevMenu({ onResetOnboarding }: Props) {
                 </h3>
                 <div className="space-y-2">
                   <button
-                    onClick={handleClearMyData}
+                    onClick={handleDeleteGoals}
                     className="w-full px-4 py-3 bg-orange-50 text-orange-700 rounded-xl font-medium hover:bg-orange-100 transition-colors text-left"
                   >
-                    내 데이터 초기화
+                    목표 삭제
+                  </button>
+                  <button
+                    onClick={handleDeleteFeed}
+                    className="w-full px-4 py-3 bg-orange-50 text-orange-700 rounded-xl font-medium hover:bg-orange-100 transition-colors text-left"
+                  >
+                    피드 삭제
+                  </button>
+                  <button
+                    onClick={handleDeleteStories}
+                    className="w-full px-4 py-3 bg-orange-50 text-orange-700 rounded-xl font-medium hover:bg-orange-100 transition-colors text-left"
+                  >
+                    스토리 삭제
                   </button>
                   <button
                     onClick={handleLogout}
@@ -184,7 +226,7 @@ export function DevMenu({ onResetOnboarding }: Props) {
                     className="w-full px-4 py-3 bg-red-50 text-red-700 rounded-xl font-medium hover:bg-red-100 transition-colors text-left flex items-center gap-2"
                   >
                     <Database className="w-4 h-4" />
-                    전체 DB 초기화
+                    전체 DB 초기화 (개발용)
                   </button>
                 </div>
               </div>
@@ -253,7 +295,7 @@ export function DevMenu({ onResetOnboarding }: Props) {
             {/* Footer */}
             <div className="border-t border-neutral-200 px-6 py-4 bg-neutral-50">
               <p className="text-xs text-neutral-500 text-center">
-                개발 환경에서만 표시됩니다
+                설정 및 데이터 관리
               </p>
             </div>
           </div>

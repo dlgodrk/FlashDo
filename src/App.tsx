@@ -5,17 +5,81 @@ import { Camera } from './components/Camera';
 import { Feed } from './components/Feed';
 import { Calendar } from './components/Calendar';
 import { RecordCard } from './components/RecordCard';
+import { DevMenu } from './components/DevMenu';
 import { HomeIcon, Users, CalendarDays } from 'lucide-react';
 import { useApp } from './context/AppContext';
 import { Record } from './types';
+import { supabase } from './lib/supabase';
 
 export default function App() {
-  const { goals, routines, completeGoal } = useApp();
+  const { goals, routines, completeGoal, setGoals, setRoutines } = useApp();
   const [currentScreen, setCurrentScreen] = useState<'onboarding' | 'home' | 'camera' | 'feed' | 'calendar' | 'record'>('onboarding');
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null);
   const [currentRoutineId, setCurrentRoutineId] = useState<string | null>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   const hasOnboarded = goals.length > 0;
+
+  // Check authentication status and auto-login
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session?.user) {
+          // Load user data from Supabase
+          const { data: goalsData } = await supabase
+            .from('goals')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .eq('is_active', true);
+
+          const { data: routinesData } = await supabase
+            .from('routines')
+            .select('*')
+            .eq('user_id', session.user.id);
+
+          if (goalsData && goalsData.length > 0) {
+            // Convert DB data to app format
+            const goals = goalsData.map(g => ({
+              id: g.id,
+              name: g.name,
+              startDate: g.start_date,
+              endDate: g.end_date,
+              isPublic: false, // Default value
+            }));
+
+            const routines = routinesData?.map(r => ({
+              id: r.id,
+              goalId: r.goal_id,
+              name: r.name,
+              timeSlot: (r.auth_time_start === '05:00' ? 'morning' : r.auth_time_start === '12:00' ? 'afternoon' : 'evening') as 'morning' | 'afternoon' | 'evening',
+              frequency: r.frequency,
+              certified: false,
+            })) || [];
+
+            setGoals(goals);
+            setRoutines(routines);
+            setCurrentScreen('home');
+          }
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, _session) => {
+      // Auth state changed, reload to refresh data
+      window.location.reload();
+    });
+
+    return () => subscription.unsubscribe();
+  }, [setGoals, setRoutines]);
 
   // Check if current goal has ended
   useEffect(() => {
@@ -74,6 +138,24 @@ export default function App() {
     setCurrentScreen('record');
   };
 
+  const handleResetOnboarding = () => {
+    setGoals([]);
+    setRoutines([]);
+    setCurrentScreen('onboarding');
+  };
+
+  // Show loading screen while checking auth
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-neutral-200 border-t-neutral-900 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-neutral-600">로딩 중...</p>
+        </div>
+      </div>
+    );
+  }
+
   const renderScreen = () => {
     if (!hasOnboarded) {
       return <Onboarding />;
@@ -106,6 +188,9 @@ export default function App() {
   return (
     <div className="min-h-screen bg-neutral-50">
       {renderScreen()}
+
+      {/* Dev Menu - Always visible */}
+      <DevMenu onResetOnboarding={handleResetOnboarding} />
 
       {hasOnboarded && currentScreen !== 'camera' && currentScreen !== 'record' && (
         <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200">
