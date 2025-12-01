@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Home } from './components/Home';
 import { Onboarding } from './components/Onboarding';
+import { AuthCallback } from './components/AuthCallback';
 import { Camera } from './components/Camera';
 import { Feed } from './components/Feed';
 import { Calendar } from './components/Calendar';
@@ -13,12 +14,21 @@ import { supabase } from './lib/supabase';
 
 export default function App() {
   const { goals, routines, completeGoal, setGoals, setRoutines } = useApp();
-  const [currentScreen, setCurrentScreen] = useState<'onboarding' | 'home' | 'camera' | 'feed' | 'calendar' | 'record'>('onboarding');
+  const [currentScreen, setCurrentScreen] = useState<'onboarding' | 'home' | 'camera' | 'feed' | 'calendar' | 'record' | 'auth-callback'>('onboarding');
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null);
   const [currentRoutineId, setCurrentRoutineId] = useState<string | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   const hasOnboarded = goals.length > 0;
+
+  // Check if current URL is auth callback
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path === '/auth/callback' || window.location.hash.includes('access_token')) {
+      setCurrentScreen('auth-callback');
+      setIsCheckingAuth(false);
+    }
+  }, []);
 
   // Check authentication status and auto-login
   useEffect(() => {
@@ -161,6 +171,21 @@ export default function App() {
   }
 
   const renderScreen = () => {
+    // Handle auth callback
+    if (currentScreen === 'auth-callback') {
+      return (
+        <AuthCallback
+          onComplete={() => {
+            // Clear hash from URL
+            window.history.replaceState(null, '', window.location.pathname);
+            // Return to onboarding to continue flow
+            setCurrentScreen('onboarding');
+            window.location.reload();
+          }}
+        />
+      );
+    }
+
     if (!hasOnboarded) {
       return <Onboarding />;
     }
