@@ -22,7 +22,7 @@ export function Onboarding() {
   });
   const [loading, setLoading] = useState(false);
 
-  // Check if user just logged in and has temp data
+  // Check if user just logged in and has temp data, or restore previous progress
   useEffect(() => {
     const checkAuthAndTempData = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -34,6 +34,20 @@ export function Onboarding() {
         setCurrentGoal(JSON.parse(tempGoal));
         setRoutinesList(JSON.parse(tempRoutines));
         setStep('nickname');
+      } else if (tempGoal && !session?.user) {
+        // Not logged in but has temp goal - restore goal and check routines
+        const parsedGoal = JSON.parse(tempGoal);
+        setCurrentGoal(parsedGoal);
+        setGoalName(parsedGoal.name);
+        
+        if (tempRoutines) {
+          // Has both temp goal and routines - go to routines step
+          setRoutinesList(JSON.parse(tempRoutines));
+          setStep('routines');
+        } else {
+          // Only has temp goal - go to routines step
+          setStep('routines');
+        }
       }
     };
 
@@ -52,6 +66,8 @@ export function Onboarding() {
     };
 
     setCurrentGoal(goal);
+    // Save goal to localStorage immediately for recovery after page refresh
+    localStorage.setItem('temp_goal', JSON.stringify(goal));
     setStep('routines');
   };
 
@@ -74,7 +90,26 @@ export function Onboarding() {
   };
 
   const handleRoutinesComplete = () => {
-    if (currentGoal && routinesList.length > 0) {
+    console.log('handleRoutinesComplete called', { currentGoal, routinesList });
+    
+    if (!currentGoal) {
+      // Try to recover currentGoal from localStorage
+      const tempGoalStr = localStorage.getItem('temp_goal');
+      if (tempGoalStr) {
+        const recoveredGoal = JSON.parse(tempGoalStr);
+        setCurrentGoal(recoveredGoal);
+        // Proceed with recovered goal
+        localStorage.setItem('temp_routines', JSON.stringify(routinesList));
+        setStep('login');
+        return;
+      }
+      console.error('currentGoal is null and cannot be recovered');
+      alert('목표 정보가 없습니다. 처음부터 다시 시작해주세요.');
+      setStep('goal');
+      return;
+    }
+    
+    if (routinesList.length > 0) {
       // Save to temporary storage
       localStorage.setItem('temp_goal', JSON.stringify(currentGoal));
       localStorage.setItem('temp_routines', JSON.stringify(routinesList));
