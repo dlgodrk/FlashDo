@@ -325,133 +325,135 @@ export function Onboarding() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-neutral-50 px-6 py-12">
-      <div className="max-w-md mx-auto">
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-neutral-900 mb-2">
-            루틴 만들기
-          </h2>
-          <p className="text-neutral-600">
-            최대 3개까지 만들 수 있어요
-          </p>
-        </div>
-
-        {routinesList.length < 3 && (
-          <div className="space-y-6 mb-8">
-            <div>
-              <label className="block text-base font-semibold text-neutral-900 mb-3">
-                루틴 이름
-              </label>
-              <input
-                type="text"
-                value={routineName}
-                onChange={(e) => setRoutineName(e.target.value)}
-                placeholder="예: 아침 조깅 30분"
-                className="w-full px-4 py-4 bg-white border-2 border-neutral-200 rounded-2xl focus:border-neutral-900 focus:outline-none transition-colors"
-              />
-            </div>
-
-            <div>
-              <label className="block text-base font-semibold text-neutral-900 mb-3">
-                인증 시간 설정
-              </label>
-              <input
-                type="time"
-                value={authTime}
-                onChange={(e) => {
-                  setAuthTime(e.target.value);
-                  // Auto-set timeSlot based on time
-                  const hour = parseInt(e.target.value.split(':')[0]);
-                  if (hour >= 5 && hour < 12) setTimeSlot('morning');
-                  else if (hour >= 12 && hour < 18) setTimeSlot('afternoon');
-                  else setTimeSlot('evening');
-                }}
-                className="w-full px-4 py-4 bg-white border-2 border-neutral-200 rounded-2xl focus:border-neutral-900 focus:outline-none transition-colors text-lg text-center font-medium"
-              />
-              <p className="text-neutral-500 text-sm mt-2">
-                💡 설정한 시간 ±1시간 동안 인증할 수 있어요
-              </p>
-              <p className="text-neutral-400 text-xs mt-1">
-                예: {authTime} 설정 시 {(() => {
-                  const [h, m] = authTime.split(':').map(Number);
-                  const startH = (h - 1 + 24) % 24;
-                  const endH = (h + 1) % 24;
-                  return `${startH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ~ ${endH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-                })()} 사이 인증 가능
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-base font-semibold text-neutral-900 mb-3">
-                요일 선택
-              </label>
-              <div className="flex gap-2">
-                {days.map((day) => (
-                  <button
-                    key={day}
-                    onClick={() => toggleDay(day)}
-                    className={`flex-1 py-3 rounded-xl font-medium transition-all ${
-                      selectedDays.includes(day)
-                        ? 'bg-neutral-900 text-white'
-                        : 'bg-white text-neutral-600 border-2 border-neutral-200'
-                    }`}
-                  >
-                    {day}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <button
-              onClick={handleAddRoutine}
-              disabled={!routineName.trim()}
-              className="w-full py-4 bg-white text-neutral-900 border-2 border-neutral-900 rounded-2xl font-semibold disabled:opacity-30 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2"
-            >
-              <Plus className="w-5 h-5" />
-              루틴 추가
-            </button>
-          </div>
-        )}
-
-        {routinesList.length > 0 && (
-          <div className="space-y-3 mb-8">
-            <p className="text-neutral-600 font-medium">
-              추가된 루틴 ({routinesList.length}/3)
+  if (step === 'routines') {
+    return (
+      <div className="min-h-screen bg-neutral-50 px-6 py-12">
+        <div className="max-w-md mx-auto">
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-neutral-900 mb-2">
+              루틴 만들기
+            </h2>
+            <p className="text-neutral-600">
+              최대 3개까지 만들 수 있어요
             </p>
-            {routinesList.map((routine) => (
-              <div
-                key={routine.id}
-                className="flex items-center justify-between px-4 py-4 bg-white rounded-2xl border-2 border-neutral-200"
-              >
-                <div>
-                  <p className="text-neutral-900 font-medium">{routine.name}</p>
-                  <p className="text-neutral-500 text-sm">
-                    {routine.authTime ? `${routine.authTime} (±1시간)` : routine.timeSlot === 'morning' ? '아침' : routine.timeSlot === 'afternoon' ? '오후' : '저녁'} · {routine.frequency.join(', ')}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setRoutinesList(routinesList.filter(r => r.id !== routine.id))}
-                  className="p-2 text-neutral-400 hover:text-neutral-900 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            ))}
           </div>
-        )}
 
-        {routinesList.length > 0 && (
-          <button
-            onClick={handleRoutinesComplete}
-            className="w-full py-5 bg-neutral-900 text-white font-semibold text-lg rounded-2xl"
-          >
-            다음
-          </button>
-        )}
+          {routinesList.length < 3 && (
+            <div className="space-y-6 mb-8">
+              <div>
+                <label className="block text-base font-semibold text-neutral-900 mb-3">
+                  루틴 이름
+                </label>
+                <input
+                  type="text"
+                  value={routineName}
+                  onChange={(e) => setRoutineName(e.target.value)}
+                  placeholder="예: 아침 조깅 30분"
+                  className="w-full px-4 py-4 bg-white border-2 border-neutral-200 rounded-2xl focus:border-neutral-900 focus:outline-none transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-base font-semibold text-neutral-900 mb-3">
+                  인증 시간 설정
+                </label>
+                <input
+                  type="time"
+                  value={authTime}
+                  onChange={(e) => {
+                    setAuthTime(e.target.value);
+                    // Auto-set timeSlot based on time
+                    const hour = parseInt(e.target.value.split(':')[0]);
+                    if (hour >= 5 && hour < 12) setTimeSlot('morning');
+                    else if (hour >= 12 && hour < 18) setTimeSlot('afternoon');
+                    else setTimeSlot('evening');
+                  }}
+                  className="w-full px-4 py-4 bg-white border-2 border-neutral-200 rounded-2xl focus:border-neutral-900 focus:outline-none transition-colors text-lg text-center font-medium"
+                />
+                <p className="text-neutral-500 text-sm mt-2">
+                  💡 설정한 시간 ±1시간 동안 인증할 수 있어요
+                </p>
+                <p className="text-neutral-400 text-xs mt-1">
+                  예: {authTime} 설정 시 {(() => {
+                    const [h, m] = authTime.split(':').map(Number);
+                    const startH = (h - 1 + 24) % 24;
+                    const endH = (h + 1) % 24;
+                    return `${startH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ~ ${endH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+                  })()} 사이 인증 가능
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-base font-semibold text-neutral-900 mb-3">
+                  요일 선택
+                </label>
+                <div className="flex gap-2">
+                  {days.map((day) => (
+                    <button
+                      key={day}
+                      onClick={() => toggleDay(day)}
+                      className={`flex-1 py-3 rounded-xl font-medium transition-all ${
+                        selectedDays.includes(day)
+                          ? 'bg-neutral-900 text-white'
+                          : 'bg-white text-neutral-600 border-2 border-neutral-200'
+                      }`}
+                    >
+                      {day}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={handleAddRoutine}
+                disabled={!routineName.trim()}
+                className="w-full py-4 bg-white text-neutral-900 border-2 border-neutral-900 rounded-2xl font-semibold disabled:opacity-30 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                루틴 추가
+              </button>
+            </div>
+          )}
+
+          {routinesList.length > 0 && (
+            <div className="space-y-3 mb-8">
+              <p className="text-neutral-600 font-medium">
+                추가된 루틴 ({routinesList.length}/3)
+              </p>
+              {routinesList.map((routine) => (
+                <div
+                  key={routine.id}
+                  className="flex items-center justify-between px-4 py-4 bg-white rounded-2xl border-2 border-neutral-200"
+                >
+                  <div>
+                    <p className="text-neutral-900 font-medium">{routine.name}</p>
+                    <p className="text-neutral-500 text-sm">
+                      {routine.authTime ? `${routine.authTime} (±1시간)` : routine.timeSlot === 'morning' ? '아침' : routine.timeSlot === 'afternoon' ? '오후' : '저녁'} · {routine.frequency.join(', ')}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setRoutinesList(routinesList.filter(r => r.id !== routine.id))}
+                    className="p-2 text-neutral-400 hover:text-neutral-900 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {routinesList.length > 0 && (
+            <button
+              onClick={handleRoutinesComplete}
+              className="w-full py-5 bg-neutral-900 text-white font-semibold text-lg rounded-2xl"
+            >
+              다음
+            </button>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   if (step === 'login') {
     return (
