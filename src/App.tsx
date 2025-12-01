@@ -73,9 +73,13 @@ export default function App() {
     checkAuth();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, _session) => {
-      // Auth state changed, reload to refresh data
-      window.location.reload();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, _session) => {
+      // Only reload on sign in/sign out, not on initial session
+      if (event === 'SIGNED_OUT') {
+        setGoals([]);
+        setRoutines([]);
+        setCurrentScreen('onboarding');
+      }
     });
 
     return () => subscription.unsubscribe();
