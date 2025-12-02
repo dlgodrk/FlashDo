@@ -18,6 +18,7 @@ export default function App() {
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null);
   const [currentRoutineId, setCurrentRoutineId] = useState<string | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [onboardingStep, setOnboardingStep] = useState<'goal' | 'routines' | 'login' | 'nickname'>('goal');
 
   const hasOnboarded = goals.length > 0;
 
@@ -55,6 +56,19 @@ export default function App() {
             .select('*')
             .eq('user_id', session.user.id);
 
+          // Get today's verifications to check certified status
+          const today = new Date().toISOString().split('T')[0];
+          const { data: todayVerifications } = await supabase
+            .from('verifications')
+            .select('routine_id')
+            .eq('user_id', session.user.id)
+            .gte('created_at', `${today}T00:00:00`)
+            .lte('created_at', `${today}T23:59:59`);
+
+          const certifiedRoutineIds = new Set(
+            todayVerifications?.map(v => v.routine_id) || []
+          );
+
           if (goalsData && goalsData.length > 0) {
             // Convert DB data to app format
             const goals = goalsData.map(g => ({
@@ -65,14 +79,39 @@ export default function App() {
               isPublic: false, // Default value
             }));
 
-            const routines = routinesData?.map(r => ({
-              id: r.id,
-              goalId: r.goal_id,
-              name: r.name,
-              timeSlot: (r.auth_time_start === '05:00' ? 'morning' : r.auth_time_start === '12:00' ? 'afternoon' : 'evening') as 'morning' | 'afternoon' | 'evening',
-              frequency: r.frequency,
-              certified: false,
-            })) || [];
+            const routines = routinesData?.map(r => {
+              // Calculate authTime from auth_time_start and auth_time_end (middle point)
+              let authTime: string | undefined;
+              if (r.auth_time_start && r.auth_time_end) {
+                const [startH, startM] = r.auth_time_start.split(':').map(Number);
+                const [endH, endM] = r.auth_time_end.split(':').map(Number);
+                const startMinutes = startH * 60 + startM;
+                const endMinutes = endH * 60 + endM;
+
+                // Calculate middle point (handling day wrap-around)
+                let middleMinutes;
+                if (endMinutes < startMinutes) {
+                  // Wrapped around midnight
+                  middleMinutes = ((startMinutes + endMinutes + 1440) / 2) % 1440;
+                } else {
+                  middleMinutes = (startMinutes + endMinutes) / 2;
+                }
+
+                const h = Math.floor(middleMinutes / 60);
+                const m = Math.floor(middleMinutes % 60);
+                authTime = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+              }
+
+              return {
+                id: r.id,
+                goalId: r.goal_id,
+                name: r.name,
+                timeSlot: (r.auth_time_start === '05:00' ? 'morning' : r.auth_time_start === '12:00' ? 'afternoon' : 'evening') as 'morning' | 'afternoon' | 'evening',
+                authTime,
+                frequency: r.frequency,
+                certified: certifiedRoutineIds.has(r.id),
+              };
+            }) || [];
 
             setGoals(goals);
             setRoutines(routines);
@@ -92,14 +131,23 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, _session) => {
       // Only reload on sign in/sign out, not on initial session
       if (event === 'SIGNED_OUT') {
+        // Clear all data
         setGoals([]);
         setRoutines([]);
+
+        // Clear temporary onboarding data
+        localStorage.removeItem('temp_goal');
+        localStorage.removeItem('temp_routines');
+
+        // Go to login screen
+        setOnboardingStep('login');
         setCurrentScreen('onboarding');
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [setGoals, setRoutines]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Check if current goal has ended
   useEffect(() => {
@@ -137,18 +185,76 @@ export default function App() {
     return () => clearInterval(interval);
   }, [routines]);
 
-  useEffect(() => {
-    if (hasOnboarded && currentScreen === 'onboarding') {
-      setCurrentScreen('home');
-    }
-  }, [hasOnboarded, currentScreen]);
+  // Removed the problematic useEffect that was forcing screen to home
 
   const handleCertify = (routineId: string) => {
     setCurrentRoutineId(routineId);
     setCurrentScreen('camera');
   };
 
-  const handleCameraComplete = () => {
+  const handleCameraComplete = async () => {
+    // Reload routines to update certified status
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data: routinesData } = await supabase
+          .from('routines')
+          .select('*')
+          .eq('user_id', session.user.id);
+
+        // Get today's verifications to check certified status
+        const today = new Date().toISOString().split('T')[0];
+        const { data: todayVerifications } = await supabase
+          .from('verifications')
+          .select('routine_id')
+          .eq('user_id', session.user.id)
+          .gte('created_at', `${today}T00:00:00`)
+          .lte('created_at', `${today}T23:59:59`);
+
+        const certifiedRoutineIds = new Set(
+          todayVerifications?.map(v => v.routine_id) || []
+        );
+
+        const routines = routinesData?.map(r => {
+          // Calculate authTime from auth_time_start and auth_time_end (middle point)
+          let authTime: string | undefined;
+          if (r.auth_time_start && r.auth_time_end) {
+            const [startH, startM] = r.auth_time_start.split(':').map(Number);
+            const [endH, endM] = r.auth_time_end.split(':').map(Number);
+            const startMinutes = startH * 60 + startM;
+            const endMinutes = endH * 60 + endM;
+
+            // Calculate middle point (handling day wrap-around)
+            let middleMinutes;
+            if (endMinutes < startMinutes) {
+              // Wrapped around midnight
+              middleMinutes = ((startMinutes + endMinutes + 1440) / 2) % 1440;
+            } else {
+              middleMinutes = (startMinutes + endMinutes) / 2;
+            }
+
+            const h = Math.floor(middleMinutes / 60);
+            const m = Math.floor(middleMinutes % 60);
+            authTime = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+          }
+
+          return {
+            id: r.id,
+            goalId: r.goal_id,
+            name: r.name,
+            timeSlot: (r.auth_time_start === '05:00' ? 'morning' : r.auth_time_start === '12:00' ? 'afternoon' : 'evening') as 'morning' | 'afternoon' | 'evening',
+            authTime,
+            frequency: r.frequency,
+            certified: certifiedRoutineIds.has(r.id),
+          };
+        }) || [];
+
+        setRoutines(routines);
+      }
+    } catch (error) {
+      console.error('Error reloading routines:', error);
+    }
+
     setCurrentScreen('home');
     setCurrentRoutineId(null);
   };
@@ -161,6 +267,9 @@ export default function App() {
   const handleResetOnboarding = () => {
     setGoals([]);
     setRoutines([]);
+    localStorage.removeItem('temp_goal');
+    localStorage.removeItem('temp_routines');
+    setOnboardingStep('goal'); // Reset to beginning
     setCurrentScreen('onboarding');
   };
 
@@ -191,7 +300,7 @@ export default function App() {
     }
 
     if (!hasOnboarded) {
-      return <Onboarding />;
+      return <Onboarding initialStep={onboardingStep} />;
     }
 
     switch (currentScreen) {

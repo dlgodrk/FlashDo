@@ -4,9 +4,13 @@ import { Plus, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
 
-export function Onboarding() {
+type OnboardingProps = {
+  initialStep?: 'goal' | 'routines' | 'login' | 'nickname';
+};
+
+export function Onboarding({ initialStep = 'goal' }: OnboardingProps) {
   const { setGoals, setRoutines } = useApp();
-  const [step, setStep] = useState<'goal' | 'routines' | 'login' | 'nickname'>('goal');
+  const [step, setStep] = useState<'goal' | 'routines' | 'login' | 'nickname'>(initialStep);
   const [goalName, setGoalName] = useState('');
   const [duration, setDuration] = useState('30');
   const [isPublic, setIsPublic] = useState(false);
@@ -266,16 +270,8 @@ export function Onboarding() {
       localStorage.removeItem('temp_routines');
       console.log('[Onboarding] Temp data cleared');
 
-      // Save to local state with the saved goal (with real UUID)
-      const savedGoalForState: Goal = {
-        id: savedGoal.id,
-        name: savedGoal.name,
-        startDate: savedGoal.start_date,
-        endDate: savedGoal.end_date,
-        isPublic: false,
-      };
-      setGoals([savedGoalForState]);
-      setRoutines(tempRoutines);
+      // No need to call setGoals/setRoutines here
+      // Page will reload and App.tsx checkAuth will load data from DB
 
       console.log('[Onboarding] Complete! Reloading page...');
       alert('회원가입이 완료되었습니다!');
@@ -518,19 +514,33 @@ export function Onboarding() {
   }
 
   if (step === 'login') {
+    // Check if there's temp data to determine the message
+    const hasTempData = localStorage.getItem('temp_goal') && localStorage.getItem('temp_routines');
+
     return (
       <div className="min-h-screen bg-neutral-50 px-6 py-12 flex items-center">
         <div className="max-w-md mx-auto w-full">
           <div className="mb-16 text-center">
-            <h2 className="text-3xl font-bold text-neutral-900 mb-4">
-              회원가입이 필요합니다
-            </h2>
-            <p className="text-neutral-600 mb-2">
-              목표와 루틴이 준비되었습니다!
-            </p>
-            <p className="text-neutral-600">
-              소셜 로그인으로 간편하게 시작하세요
-            </p>
+            <h1 className="text-4xl font-bold text-neutral-900 mb-4">FlashDo</h1>
+            {hasTempData ? (
+              <>
+                <p className="text-neutral-600 mb-2">
+                  목표와 루틴이 준비되었습니다!
+                </p>
+                <p className="text-neutral-600">
+                  소셜 로그인으로 간편하게 시작하세요
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-neutral-600 mb-2">
+                  무거운 목표는 가슴에 품고,
+                </p>
+                <p className="text-neutral-600">
+                  가벼운 행동만 익명으로 증명하자
+                </p>
+              </>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -570,6 +580,17 @@ export function Onboarding() {
               Apple로 시작하기
             </button>
           </div>
+
+          {!hasTempData && (
+            <div className="mt-6">
+              <button
+                onClick={() => setStep('goal')}
+                className="w-full py-4 bg-white text-neutral-900 border-2 border-neutral-900 rounded-xl font-medium transition-all hover:bg-neutral-900 hover:text-white"
+              >
+                새로운 목표로 시작하기
+              </button>
+            </div>
+          )}
 
           <p className="text-sm text-neutral-500 text-center mt-8">
             계속 진행하면 서비스 이용약관 및 개인정보 처리방침에 동의하는 것으로 간주됩니다
