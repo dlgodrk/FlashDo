@@ -268,17 +268,15 @@ export function Onboarding({ initialStep = 'welcome' }: OnboardingProps) {
       localStorage.removeItem('temp_routines');
       console.log('[Onboarding] Temp data cleared');
 
-      // No need to call setGoals/setRoutines here
-      // Page will reload and App.tsx checkAuth will load data from DB
-
       console.log('[Onboarding] Complete! Reloading page...');
-      alert('회원가입이 완료되었습니다!');
-      window.location.reload();
+      // Keep loading state and reload after short delay to ensure DB write completes
+      setTimeout(() => {
+        window.location.href = window.location.origin;
+      }, 500);
     } catch (error) {
       console.error('[Onboarding] Nickname submit error:', error);
       const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
       alert(`회원가입에 실패했습니다.\n오류: ${errorMessage}\n\n브라우저 콘솔을 확인해주세요.`);
-    } finally {
       setLoading(false);
     }
   };

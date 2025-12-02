@@ -335,7 +335,7 @@ export default function App() {
           <RecordCard record={selectedRecord} onClose={() => setCurrentScreen('calendar')} />
         ) : null;
       default:
-        return <Home onCertify={handleCertify} />;
+        return <Home onCertify={handleCertify} onStartGoal={handleStartGoal} />;
     }
   };
 
