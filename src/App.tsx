@@ -18,9 +18,10 @@ export default function App() {
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null);
   const [currentRoutineId, setCurrentRoutineId] = useState<string | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [onboardingStep, setOnboardingStep] = useState<'goal' | 'routines' | 'login' | 'nickname'>('goal');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState<'welcome' | 'goal' | 'routines' | 'login' | 'nickname'>('welcome');
 
-  const hasOnboarded = goals.length > 0;
+  const hasOnboarded = isLoggedIn;
 
   // Check if current URL is auth callback
   useEffect(() => {
@@ -44,6 +45,8 @@ export default function App() {
         const { data: { session } } = await supabase.auth.getSession();
 
         if (session?.user) {
+          setIsLoggedIn(true);
+
           // Load user data from Supabase
           const { data: goalsData } = await supabase
             .from('goals')
@@ -115,8 +118,10 @@ export default function App() {
 
             setGoals(goals);
             setRoutines(routines);
-            setCurrentScreen('home');
           }
+
+          // Always go to home if logged in (even if no goals)
+          setCurrentScreen('home');
         }
       } catch (error) {
         console.error('Auth check error:', error);
@@ -134,13 +139,14 @@ export default function App() {
         // Clear all data
         setGoals([]);
         setRoutines([]);
+        setIsLoggedIn(false);
 
         // Clear temporary onboarding data
         localStorage.removeItem('temp_goal');
         localStorage.removeItem('temp_routines');
 
-        // Go to login screen
-        setOnboardingStep('login');
+        // Go to welcome screen
+        setOnboardingStep('welcome');
         setCurrentScreen('onboarding');
       }
     });
@@ -267,9 +273,15 @@ export default function App() {
   const handleResetOnboarding = () => {
     setGoals([]);
     setRoutines([]);
+    setIsLoggedIn(false);
     localStorage.removeItem('temp_goal');
     localStorage.removeItem('temp_routines');
-    setOnboardingStep('goal'); // Reset to beginning
+    setOnboardingStep('welcome'); // Reset to beginning
+    setCurrentScreen('onboarding');
+  };
+
+  const handleStartGoal = () => {
+    setOnboardingStep('goal');
     setCurrentScreen('onboarding');
   };
 
@@ -305,7 +317,7 @@ export default function App() {
 
     switch (currentScreen) {
       case 'home':
-        return <Home onCertify={handleCertify} />;
+        return <Home onCertify={handleCertify} onStartGoal={handleStartGoal} />;
       case 'camera':
         return (
           <Camera

@@ -307,17 +307,17 @@ export function Onboarding({ initialStep = 'welcome' }: OnboardingProps) {
 
           <div className="space-y-4">
             <button
-              onClick={() => setStep('goal')}
+              onClick={() => setStep('login')}
               className="w-full py-5 bg-neutral-900 text-white font-semibold text-lg rounded-2xl transition-all hover:bg-neutral-800"
             >
-              처음 시작하기
+              로그인
             </button>
 
             <button
-              onClick={() => setStep('login')}
+              onClick={() => setStep('goal')}
               className="w-full py-5 bg-white text-neutral-900 border-2 border-neutral-900 rounded-2xl font-semibold text-lg transition-all hover:bg-neutral-900 hover:text-white"
             >
-              로그인
+              처음 시작하기
             </button>
           </div>
 
@@ -616,17 +616,6 @@ export function Onboarding({ initialStep = 'welcome' }: OnboardingProps) {
               Apple로 시작하기
             </button>
           </div>
-
-          {!hasTempData && (
-            <div className="mt-6">
-              <button
-                onClick={() => setStep('goal')}
-                className="w-full py-4 bg-white text-neutral-900 border-2 border-neutral-900 rounded-xl font-medium transition-all hover:bg-neutral-900 hover:text-white"
-              >
-                새로운 목표로 시작하기
-              </button>
-            </div>
-          )}
 
           <p className="text-sm text-neutral-500 text-center mt-8">
             계속 진행하면 서비스 이용약관 및 개인정보 처리방침에 동의하는 것으로 간주됩니다

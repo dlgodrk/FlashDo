@@ -1,12 +1,13 @@
-import { Camera, CheckCircle2, Circle } from 'lucide-react';
+import { Camera, CheckCircle2, Circle, Target } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { DevMenu } from './DevMenu';
 
 type Props = {
   onCertify: (routineId: string) => void;
+  onStartGoal?: () => void;
 };
 
-export function Home({ onCertify }: Props) {
+export function Home({ onCertify, onStartGoal }: Props) {
   const { goals, routines, calculateStreak } = useApp();
 
   const handleResetOnboarding = () => {
@@ -16,7 +17,40 @@ export function Home({ onCertify }: Props) {
     window.location.reload();
   };
 
-  if (goals.length === 0) return null;
+  if (goals.length === 0) {
+    return (
+      <div className="min-h-screen bg-neutral-50 pb-24">
+        <DevMenu onResetOnboarding={handleResetOnboarding} />
+        <div className="max-w-md mx-auto px-6 py-16">
+          <div className="text-center mb-12">
+            <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-neutral-100 flex items-center justify-center">
+              <Target className="w-12 h-12 text-neutral-400" />
+            </div>
+            <h1 className="text-3xl font-bold text-neutral-900 mb-4">
+              첫 목표를 만들어보세요
+            </h1>
+            <p className="text-neutral-600 text-lg">
+              무거운 목표는 가슴에 품고,<br />
+              가벼운 행동만 익명으로 증명하자
+            </p>
+          </div>
+
+          <button
+            onClick={onStartGoal}
+            className="w-full py-6 bg-neutral-900 text-white font-bold text-lg rounded-3xl transition-all hover:bg-neutral-800 active:scale-95"
+          >
+            첫 목표 만들기
+          </button>
+
+          <div className="mt-8 px-6 py-5 bg-neutral-100 rounded-2xl">
+            <p className="text-neutral-600 text-sm">
+              💡 목표를 설정하고 매일 루틴을 인증해보세요
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const currentGoal = goals[0];
 
