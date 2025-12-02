@@ -12,11 +12,15 @@ export function AuthCallback({ onComplete }: Props) {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
+        console.log('[AuthCallback] Starting auth callback process...');
+
         // Check if user is authenticated
         const { data: { user }, error: userError } = await supabase.auth.getUser();
 
         if (userError) throw userError;
         if (!user) throw new Error('No user found');
+
+        console.log('[AuthCallback] User authenticated:', user.id);
 
         // Check if profile already exists
         const { data: profile } = await supabase
@@ -25,17 +29,23 @@ export function AuthCallback({ onComplete }: Props) {
           .eq('id', user.id)
           .single();
 
+        console.log('[AuthCallback] Profile check result:', profile ? 'exists' : 'not found');
+
+        // Clear URL hash to prevent infinite loop
+        window.history.replaceState(null, '', window.location.pathname);
+
         if (profile) {
           // User already has a profile, go to home
+          console.log('[AuthCallback] User has profile, completing onboarding');
           localStorage.setItem('onboarding_complete', 'true');
           onComplete();
         } else {
           // Need to set nickname
-          // This will be handled by the parent component
+          console.log('[AuthCallback] User needs to set nickname');
           onComplete();
         }
       } catch (err) {
-        console.error('Auth callback error:', err);
+        console.error('[AuthCallback] Error:', err);
         setError('로그인 처리 중 오류가 발생했습니다.');
       } finally {
         setLoading(false);

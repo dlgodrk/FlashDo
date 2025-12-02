@@ -26,8 +26,11 @@ export default function App() {
     const path = window.location.pathname;
     const hash = window.location.hash;
 
+    console.log('[App] Checking URL for auth callback:', { path, hasToken: hash.includes('access_token') });
+
     // Only trigger auth callback if we have the access token
     if (hash.includes('access_token') || (path === '/auth/callback' && hash.includes('access_token'))) {
+      console.log('[App] Auth callback detected, showing auth-callback screen');
       setCurrentScreen('auth-callback');
       setIsCheckingAuth(false);
     }
@@ -179,10 +182,9 @@ export default function App() {
       return (
         <AuthCallback
           onComplete={() => {
-            // Clear URL completely and go to root
-            window.history.replaceState(null, '', '/');
-            // Reload to restart the app with clean state
-            window.location.href = '/';
+            console.log('[App] Auth callback complete, switching to onboarding');
+            // Switch to onboarding screen instead of reloading
+            setCurrentScreen('onboarding');
           }}
         />
       );

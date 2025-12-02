@@ -25,29 +25,42 @@ export function Onboarding() {
   // Check if user just logged in and has temp data, or restore previous progress
   useEffect(() => {
     const checkAuthAndTempData = async () => {
+      console.log('[Onboarding] Checking auth and temp data...');
       const { data: { session } } = await supabase.auth.getSession();
       const tempGoal = localStorage.getItem('temp_goal');
       const tempRoutines = localStorage.getItem('temp_routines');
 
+      console.log('[Onboarding] Data check:', {
+        hasSession: !!session?.user,
+        hasTempGoal: !!tempGoal,
+        hasTempRoutines: !!tempRoutines
+      });
+
       if (session?.user && tempGoal && tempRoutines) {
         // User is logged in and has temp data, go to nickname step
+        console.log('[Onboarding] User logged in with temp data, going to nickname step');
         setCurrentGoal(JSON.parse(tempGoal));
         setRoutinesList(JSON.parse(tempRoutines));
         setStep('nickname');
       } else if (tempGoal && !session?.user) {
         // Not logged in but has temp goal - restore goal and check routines
+        console.log('[Onboarding] Has temp goal but not logged in');
         const parsedGoal = JSON.parse(tempGoal);
         setCurrentGoal(parsedGoal);
         setGoalName(parsedGoal.name);
-        
+
         if (tempRoutines) {
           // Has both temp goal and routines - go to routines step
+          console.log('[Onboarding] Restoring routines step');
           setRoutinesList(JSON.parse(tempRoutines));
           setStep('routines');
         } else {
           // Only has temp goal - go to routines step
+          console.log('[Onboarding] Going to routines step');
           setStep('routines');
         }
+      } else {
+        console.log('[Onboarding] Starting from goal step');
       }
     };
 
@@ -136,14 +149,41 @@ export function Onboarding() {
   };
 
   const handleNicknameSubmit = async () => {
-    if (!nickname.trim()) return;
+    console.log('[Onboarding] handleNicknameSubmit called');
+
+    if (!nickname.trim()) {
+      console.log('[Onboarding] Nickname is empty');
+      return;
+    }
 
     setLoading(true);
     try {
+      console.log('[Onboarding] Getting user...');
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not found');
+      console.log('[Onboarding] User found:', user.id);
+
+      // Check temp data before proceeding
+      const tempGoalStr = localStorage.getItem('temp_goal');
+      const tempRoutinesStr = localStorage.getItem('temp_routines');
+
+      console.log('[Onboarding] Temp data check:', {
+        hasGoal: !!tempGoalStr,
+        hasRoutines: !!tempRoutinesStr,
+        goalData: tempGoalStr ? tempGoalStr.substring(0, 100) : 'null',
+        routinesData: tempRoutinesStr ? tempRoutinesStr.substring(0, 100) : 'null'
+      });
+
+      if (!tempGoalStr || !tempRoutinesStr) {
+        throw new Error(`Temp data missing - Goal: ${!!tempGoalStr}, Routines: ${!!tempRoutinesStr}`);
+      }
+
+      const tempGoal = JSON.parse(tempGoalStr);
+      const tempRoutines = JSON.parse(tempRoutinesStr);
+      console.log('[Onboarding] Parsed temp data:', { tempGoal, tempRoutines });
 
       // Save profile
+      console.log('[Onboarding] Saving profile...');
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({
@@ -151,19 +191,25 @@ export function Onboarding() {
           nickname: nickname,
         });
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        // Check if profile already exists
+        if (profileError.code === '23505') {
+          console.log('[Onboarding] Profile already exists, updating...');
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ nickname: nickname })
+            .eq('id', user.id);
 
-      // Get temp data from localStorage
-      const tempGoalStr = localStorage.getItem('temp_goal');
-      const tempRoutinesStr = localStorage.getItem('temp_routines');
-
-      if (!tempGoalStr || !tempRoutinesStr) throw new Error('Temp data not found');
-
-      const tempGoal = JSON.parse(tempGoalStr);
-      const tempRoutines = JSON.parse(tempRoutinesStr);
+          if (updateError) throw updateError;
+        } else {
+          throw profileError;
+        }
+      }
+      console.log('[Onboarding] Profile saved');
 
       // Save goal to database
-      const { error: goalError } = await supabase
+      console.log('[Onboarding] Saving goal...');
+      const { data: savedGoal, error: goalError } = await supabase
         .from('goals')
         .insert({
           user_id: user.id,
@@ -172,11 +218,16 @@ export function Onboarding() {
           start_date: tempGoal.startDate,
           end_date: tempGoal.endDate,
           is_active: true,
-        });
+        })
+        .select()
+        .single();
 
       if (goalError) throw goalError;
+      if (!savedGoal) throw new Error('Goal was not saved properly');
+      console.log('[Onboarding] Goal saved with id:', savedGoal.id);
 
       // Save routines to database
+      console.log('[Onboarding] Saving routines...');
       const routinesData = tempRoutines.map((r: Routine) => {
         let authTimeStart, authTimeEnd;
 
@@ -194,7 +245,7 @@ export function Onboarding() {
         }
 
         return {
-          goal_id: tempGoal.id,
+          goal_id: savedGoal.id,
           user_id: user.id,
           name: r.name,
           auth_time_start: authTimeStart,
@@ -208,20 +259,31 @@ export function Onboarding() {
         .insert(routinesData);
 
       if (routinesError) throw routinesError;
+      console.log('[Onboarding] Routines saved');
 
       // Clear temp data
       localStorage.removeItem('temp_goal');
       localStorage.removeItem('temp_routines');
+      console.log('[Onboarding] Temp data cleared');
 
-      // Save to local state
-      setGoals([tempGoal]);
+      // Save to local state with the saved goal (with real UUID)
+      const savedGoalForState: Goal = {
+        id: savedGoal.id,
+        name: savedGoal.name,
+        startDate: savedGoal.start_date,
+        endDate: savedGoal.end_date,
+        isPublic: false,
+      };
+      setGoals([savedGoalForState]);
       setRoutines(tempRoutines);
 
+      console.log('[Onboarding] Complete! Reloading page...');
       alert('회원가입이 완료되었습니다!');
       window.location.reload();
     } catch (error) {
-      console.error('Nickname submit error:', error);
-      alert('회원가입에 실패했습니다. 다시 시도해주세요.');
+      console.error('[Onboarding] Nickname submit error:', error);
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
+      alert(`회원가입에 실패했습니다.\n오류: ${errorMessage}\n\n브라우저 콘솔을 확인해주세요.`);
     } finally {
       setLoading(false);
     }
