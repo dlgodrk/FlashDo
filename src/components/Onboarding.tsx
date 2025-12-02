@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Goal, Routine } from '../types';
 import { Plus, X } from 'lucide-react';
-import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
 
 type OnboardingProps = {
@@ -9,7 +8,6 @@ type OnboardingProps = {
 };
 
 export function Onboarding({ initialStep = 'goal' }: OnboardingProps) {
-  const { setGoals, setRoutines } = useApp();
   const [step, setStep] = useState<'goal' | 'routines' | 'login' | 'nickname'>(initialStep);
   const [goalName, setGoalName] = useState('');
   const [duration, setDuration] = useState('30');

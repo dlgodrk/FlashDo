@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Flame, Zap, Heart, Clock } from 'lucide-react';
-import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
 
 type Verification = {
