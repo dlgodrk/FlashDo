@@ -4,11 +4,11 @@ import { Plus, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 type OnboardingProps = {
-  initialStep?: 'goal' | 'routines' | 'login' | 'nickname';
+  initialStep?: 'welcome' | 'goal' | 'routines' | 'login' | 'nickname';
 };
 
-export function Onboarding({ initialStep = 'goal' }: OnboardingProps) {
-  const [step, setStep] = useState<'goal' | 'routines' | 'login' | 'nickname'>(initialStep);
+export function Onboarding({ initialStep = 'welcome' }: OnboardingProps) {
+  const [step, setStep] = useState<'welcome' | 'goal' | 'routines' | 'login' | 'nickname'>(initialStep);
   const [goalName, setGoalName] = useState('');
   const [duration, setDuration] = useState('30');
   const [isPublic, setIsPublic] = useState(false);
@@ -290,6 +290,44 @@ export function Onboarding({ initialStep = 'goal' }: OnboardingProps) {
   };
 
   const days = ['월', '화', '수', '목', '금', '토', '일'];
+
+  if (step === 'welcome') {
+    return (
+      <div className="min-h-screen bg-neutral-50 px-6 py-12 flex items-center">
+        <div className="max-w-md mx-auto w-full">
+          <div className="mb-16 text-center">
+            <h1 className="text-4xl font-bold text-neutral-900 mb-4">FlashDo</h1>
+            <p className="text-lg text-neutral-600 mb-2">
+              무거운 목표는 가슴에 품고,
+            </p>
+            <p className="text-lg text-neutral-600">
+              가벼운 행동만 익명으로 증명하자
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <button
+              onClick={() => setStep('goal')}
+              className="w-full py-5 bg-neutral-900 text-white font-semibold text-lg rounded-2xl transition-all hover:bg-neutral-800"
+            >
+              처음 시작하기
+            </button>
+
+            <button
+              onClick={() => setStep('login')}
+              className="w-full py-5 bg-white text-neutral-900 border-2 border-neutral-900 rounded-2xl font-semibold text-lg transition-all hover:bg-neutral-900 hover:text-white"
+            >
+              로그인
+            </button>
+          </div>
+
+          <p className="text-sm text-neutral-500 text-center mt-8">
+            계속 진행하면 서비스 이용약관 및 개인정보 처리방침에 동의하는 것으로 간주됩니다
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (step === 'goal') {
     return (

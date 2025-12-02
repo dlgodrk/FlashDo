@@ -144,13 +144,13 @@ export function Camera({ routineId, onComplete, onCancel }: Props) {
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col">
       {/* Media Preview */}
-      <div className="flex-1 relative">
+      <div className="flex-1 relative overflow-hidden flex items-center justify-center" style={{ maxHeight: 'calc(100vh - 280px)' }}>
         {mediaUrl ? (
           mediaType === 'video' ? (
             <video
               src={mediaUrl}
               controls
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
               autoPlay
               loop
             />
@@ -158,7 +158,7 @@ export function Camera({ routineId, onComplete, onCancel }: Props) {
             <img
               src={mediaUrl}
               alt="Captured"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
             />
           )
         ) : (
@@ -179,7 +179,7 @@ export function Camera({ routineId, onComplete, onCancel }: Props) {
       </div>
 
       {/* Text Input */}
-      <div className="bg-neutral-900 px-6 py-4">
+      <div className="bg-neutral-900 px-6 py-4 flex-shrink-0">
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -194,7 +194,7 @@ export function Camera({ routineId, onComplete, onCancel }: Props) {
       </div>
 
       {/* Action Buttons */}
-      <div className="bg-neutral-900 px-6 pb-8 pt-4">
+      <div className="bg-neutral-900 px-6 pb-8 pt-4 flex-shrink-0">
         <div className="max-w-md mx-auto flex gap-3">
           <button
             onClick={handleRetake}
